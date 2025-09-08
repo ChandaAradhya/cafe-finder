@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Cafe Finder - Discover Coffee Shops Nearby</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a2c2a;
+            --secondary-color: #f3e9e2;
+            --accent-color: #c46d5e;
+            --text-color: #333;
+            --light-text: #777;
+            --background: #f9f9f9;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+            background-color: #fff;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .logo i {
+            color: var(--accent-color);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 350px;
+            background: var(--secondary-color);
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .search-container {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        #searchInput {
+            flex: 1;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #searchInput:focus {
+            border-color: var(--accent-color);
+        }
+
+        .search-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            padding: 0 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .search-btn:hover {
+            background: #5a3c39;
+        }
+
+        .location-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .location-btn {
+            flex: 1;
+            padding: 8px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .location-btn:hover {
+            background: #f5f5f5;
+            border-color: #ccc;
+        }
+
+        #useLocation {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+        }
+
+        #useLocation:hover {
+            background: #d47c6c;
+        }
+
+        .results-header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .results-title {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .results-count {
+            background: var(--accent-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        #cafeList {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .cafe-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .cafe-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .cafe-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .cafe-details {
+            display: flex;
+            justify-content: space-between;
+            color: var(--light-text);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .cafe-meta {
+            display: flex;
+            gap: 10px;
+        }
+
+        .cafe-meta span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .cafe-rating-small {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stars {
+            color: #ffc107;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            color: var(--light-text);
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--accent-color);
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #map {
+            flex: 1;
+        }
+
+        .cafe-marker {
+            background-color: var(--accent-color);
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: modalopen 0.3s;
+            position: relative;
+        }
+
+        @keyframes modalopen {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .close {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #modalHeader {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: var(--secondary-color);
+            border-radius: 12px 12px 0 0;
+        }
+
+        #modalHeader h2 {
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+        }
+
+        .cafe-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .cafe-photos {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .cafe-photo {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .cafe-info {
+            margin-bottom: 20px;
+        }
+
+        .cafe-info h3,
+        .cafe-reviews h3 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        .cafe-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .cafe-details-grid div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cafe-details-grid i {
+            color: var(--accent-color);
+            width: 20px;
+        }
+
+        .review-item {
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .review-item.expanded {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .review-author {
+            font-weight: 600;
+        }
+
+        .review-date {
+            color: var(--light-text);
+            font-size: 0.9em;
+        }
+
+        .review-content {
+            line-height: 1.5;
+            max-height: 60px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .review-item.expanded .review-content {
+            max-height: 500px;
+        }
+
+        .review-read-more {
+            color: var(--accent-color);
+            font-size: 0.9em;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .review-item:not(.expanded) .review-content.truncated + .review-read-more {
+            display: block;
+        }
+
+        .review-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .review-action {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--light-text);
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .review-action:hover {
+            color: var(--accent-color);
+        }
+
+        .review-action i {
+            font-size: 1.1em;
+        }
+
+        /* Review Form */
+        .add-review-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .add-review-section h3 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .review-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .rating-input {
+            display: flex;
+            gap: 5px;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+        }
+
+        .rating-input input {
+            display: none;
+        }
+
+        .rating-input label {
+            font-size: 1.5rem;
+            color: #ccc;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .rating-input input:checked ~ label,
+        .rating-input label:hover,
+        .rating-input label:hover ~ label {
+            color: #ffc107;
+        }
+
+        .submit-review-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .submit-review-btn:hover {
+            background: #d47c6c;
+        }
+
+        /* Real-time notification */
+        .review-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
+        }
+
+        .review-notification.show {
+            transform: translateX(0);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                width: 100%;
+                height: 40%;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+
+            #map {
+                height: 60%;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .cafe-photos {
+                grid-template-columns: 1fr;
+            }
+
+            .cafe-details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scrollbar styling */
+        #cafeList::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #cafeList::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        #cafeList::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+
+        #cafeList::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        .attribution {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .leaflet-popup-content {
+            margin: 15px;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+        
+        .view-details-btn {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .view-details-btn:hover {
+            background: #d47c6c;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-coffee"></i>
+            <span>Cafe Finder</span>
+        </div>
+        <div class="header-info">Discover coffee shops near you</div>
+    </header>
+
+    <div class="main-container">
+        <div id="sidebar">
+            <div class="search-container">
+                <div class="search-box">
+                    <input id="searchInput" type="text" placeholder="Enter city, area, or address..."
+                        value="Electronic City" />
+                    <button class="search-btn" id="searchButton">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="location-buttons">
+                    <button class="location-btn" id="useLocation">
+                        <i class="fas fa-location-arrow"></i> Use My Location
+                    </button>
+                    <button class="location-btn" id="searchArea">
+                        <i class="fas fa-map-marker-alt"></i> Search This Area
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-header">
+                <div class="results-title">Cafes Nearby</div>
+                <div class="results-count" id="resultsCount">0</div>
+            </div>
+
+            <div id="cafeList">
+                <div class="no-results">
+                    <i class="fas fa-coffee" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <p>Enter a location to find cafes</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <!-- Cafe Details Modal -->
+    <div id="cafeModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalHeader">
+                <h2 id="modalCafeName"></h2>
+                <div class="cafe-rating">
+                    <div class="stars" id="modalStars"></div>
+                    <span id="modalRating"></span>
+                    <span id="modalReviewCount"></span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="cafe-photos" id="modalPhotos"></div>
+                <div class="cafe-info">
+                    <h3>About</h3>
+                    <p id="modalDescription"></p>
+                    <div class="cafe-details-grid">
+                        <div><i class="fas fa-map-marker-alt"></i> <span id="modalAddress"></span></div>
+                        <div><i class="fas fa-clock"></i> <span id="modalHours"></span></div>
+                        <div><i class="fas fa-phone"></i> <span id="modalPhone"></span></div>
+                        <div><i class="fas fa-wifi"></i> <span id="modalWifi"></span></div>
+                    </div>
+                </div>
+                <div class="cafe-reviews">
+                    <h3>Reviews</h3>
+                    <div id="modalReviews"></div>
+                </div>
+                <div class="add-review-section">
+                    <h3>Add Your Review</h3>
+                    <form class="review-form" id="reviewForm">
+                        <div class="form-group">
+                            <label for="reviewerName">Your Name</label>
+                            <input type="text" id="reviewerName" placeholder="Enter your name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Your Rating</label>
+                            <div class="rating-input">
+                                <input type="radio" id="star5" name="rating" value="5" required>
+                                <label for="star5"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star4" name="rating" value="4">
+                                <label for="star4"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star3" name="rating" value="3">
+                                <label for="star3"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star2" name="rating" value="2">
+                                <label for="star2"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star1" name="rating" value="1">
+                                <label for="star1"><i class="fas fa-star"></i></label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="reviewContent">Your Review</label>
+                            <textarea id="reviewContent" placeholder="Share your experience..." required></textarea>
+                        </div>
+                        <button type="submit" class="submit-review-btn">Submit Review</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time notification -->
+    <div class="review-notification" id="reviewNotification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">Your review has been posted!</span>
+    </div>
+
+    <script>
+        // Initialize map (default India view)
+        var map = L.map('map').setView([12.8456, 77.6723], 14); // Electronic City, Bangalore
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Create custom icon for cafes
+        function createCafeIcon(name, index) {
+            return L.divIcon({
+                className: 'cafe-marker',
+                html: '<div>' + (index + 1) + '</div>',
+                iconSize: [30, 30]
+            });
+        }
+
+        // Sample cafe data for reviews and photos
+        const cafeDatabase = {
+            "Unnamed Cafe": {
+                rating: 4.2,
+                reviews: [
+                    {
+                        author: "Rahul S.",
+                        date: "2023-10-15",
+                        rating: 4,
+                        content: "Great coffee and friendly staff. The atmosphere is cozy and perfect for working. I especially love their cappuccino and the comfortable seating arrangements. The only downside is that it can get quite crowded during peak hours, so finding a seat might be challenging. Overall, a wonderful place to relax or get some work done."
+                    },
+                    {
+                        author: "Priya M.",
+                        date: "2023-10-10",
+                        rating: 5,
+                        content: "Best cappuccino in town! The pastries are fresh and delicious. I've been coming here for over a year now, and the quality has always been consistent. The baristas are knowledgeable and always friendly. The outdoor seating is perfect for sunny days. Highly recommend the almond croissant - it's to die for!"
+                    },
+                    {
+                        author: "Amit K.",
+                        date: "2023-10-05",
+                        rating: 3.5,
+                        content: "Good place to hang out with friends. WiFi could be faster though. The music is at just the right volume, and the lighting creates a cozy ambiance. I've noticed the power outlets are limited, so come with a charged laptop if you plan to work. The matcha latte is decent, but I've had better elsewhere."
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1445116572660-236099ec97a0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1463797221720-6b07e6426c24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "A cozy cafe with a warm atmosphere, serving quality coffee and fresh pastries. Perfect for meetings, work, or just relaxing.",
+                hours: "8:00 AM - 10:00 PM",
+                phone: "+91 98765 43210",
+                wifi: "Free (High Speed)"
+            },
+            "Coffee Corner": {
+                rating: 4.5,
+                reviews: [
+                    {
+                        author: "Neha R.",
+                        date: "2023-10-12",
+                        rating: 5,
+                        content: "Absolutely love this place! The cold brew is amazing. They have a unique brewing method that brings out the subtle notes of the beans. The staff remembers regular customers, which makes you feel welcomed. The only improvement I'd suggest is expanding their food menu beyond pastries to include some light lunch options."
+                    },
+                    {
+                        author: "Vikram J.",
+                        date: "2023-10-08",
+                        rating: 4,
+                        content: "Great ambiance and good coffee selection. A bit pricey but worth it. The interior design is modern yet comfortable, with plenty of natural light. I appreciate that they feature local artists' work on the walls. The Ethiopian pour-over is particularly excellent here."
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1477763858572-cda7deaa9bc5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "A modern coffee shop with a focus on specialty brews and artisanal pastries.",
+                hours: "7:00 AM - 9:00 PM",
+                phone: "+91 97654 32109",
+                wifi: "Free (Standard)"
+            },
+            "Brew & Bites": {
+                rating: 3.8,
+                reviews: [
+                    {
+                        author: "Sanjay P.",
+                        date: "2023-10-14",
+                        rating: 4,
+                        content: "Good coffee and excellent sandwiches. Will visit again. The turkey club is particularly good, with fresh ingredients and perfectly toasted bread. The coffee is consistently well-prepared. The only downside is the limited seating - it can be hard to find a table during lunch hours."
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "Coffee and light meals in a casual setting. Known for our signature blends.",
+                hours: "7:30 AM - 10:30 PM",
+                phone: "+91 96543 21098",
+                wifi: "Free (High Speed)"
+            },
+            "Malabar": {
+                rating: 4.2,
+                reviews: [
+                    {
+                        author: "Priya M.",
+                        date: "2023-10-20",
+                        rating: 4,
+                        content: "Authentic South Indian filter coffee. The ambiance is traditional and cozy. They serve the coffee in traditional steel tumblers, which enhances the experience. The masala dosa is crispy and flavorful. The only drawback is that the place can get quite noisy during peak hours, making it difficult to have conversations."
+                    },
+                    {
+                        author: "Rahul S.",
+                        date: "2023-10-18",
+                        rating: 5,
+                        content: "Best traditional coffee in Electronic City. Their snacks are delicious too! The vada is perfectly crispy on the outside and soft on the inside. The service is quick even when they're busy. I highly recommend trying their special filter coffee with a plate of bajji on a rainy day - it's the perfect combination!"
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1572442388796-11668a67e53d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "Authentic South Indian coffee house serving traditional filter coffee and snacks.",
+                hours: "7:00 AM - 9:00 PM",
+                phone: "+91 98765 43210",
+                wifi: "Free (Standard)"
+            },
+            "Cafe Coffee Day": {
+                rating: 4.0,
+                reviews: [
+                    {
+                        author: "Amit K.",
+                        date: "2023-10-22",
+                        rating: 4,
+                        content: "Consistent quality and good ambiance. Perfect for meetings. The outlets are conveniently located, and the staff is always professional. I often have business meetings here because the environment is conducive to conversation. The cappuccino is consistently good across all outlets. The loyalty program is also a nice perk for regular visitors."
+                    },
+                    {
+                        author: "Neha R.",
+                        date: "2023-10-19",
+                        rating: 3.5,
+                        content: "Good coffee but can get crowded during peak hours. The music is sometimes too loud for comfortable conversation. On the positive side, the air conditioning is always at the perfect temperature, and the chairs are comfortable for long stays. The chocolate chip cookies are freshly baked and pair well with their cold coffee."
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1463797221720-6b07e6426c24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "Popular coffee chain with a wide variety of beverages and snacks.",
+                hours: "8:00 AM - 11:00 PM",
+                phone: "+91 97654 32109",
+                wifi: "Free (High Speed)"
+            },
+            "Tea Treat": {
+                rating: 4.3,
+                reviews: [
+                    {
+                        author: "Sanjay P.",
+                        date: "2023-10-21",
+                        rating: 4.5,
+                        content: "Great tea selection and peaceful ambiance. Perfect for reading. They have an extensive menu of teas from around the world, and the staff is knowledgeable about helping you choose. The chamomile tea is particularly soothing. The chairs are comfortable, and the lighting is perfect for reading. I've spent many enjoyable afternoons here with a good book and a pot of tea. The only suggestion I have is to offer more vegan snack options to pair with the teas."
+                    }
+                ],
+                photos: [
+                    "https://images.unsplash.com/photo-1556679343-c7306c1976bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+                    "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                ],
+                description: "Specialty tea house with a wide selection of teas from around the world.",
+                hours: "9:00 AM - 10:00 PM",
+                phone: "+91 96543 21098",
+                wifi: "Free (High Speed)"
+            }
+        };
+
+        var markersLayer = L.layerGroup().addTo(map);
+        var cafeList = document.getElementById("cafeList");
+        var resultsCount = document.getElementById("resultsCount");
+        var searchInput = document.getElementById("searchInput");
+        var searchButton = document.getElementById("searchButton");
+        var useLocationBtn = document.getElementById("useLocation");
+        var searchAreaBtn = document.getElementById("searchArea");
+
+        // Modal elements
+        var modal = document.getElementById("cafeModal");
+        var modalCafeName = document.getElementById("modalCafeName");
+        var modalStars = document.getElementById("modalStars");
+        var modalRating = document.getElementById("modalRating");
+        var modalReviewCount = document.getElementById("modalReviewCount");
+        var modalPhotos = document.getElementById("modalPhotos");
+        var modalDescription = document.getElementById("modalDescription");
+        var modalAddress = document.getElementById("modalAddress");
+        var modalHours = document.getElementById("modalHours");
+        var modalPhone = document.getElementById("modalPhone");
+        var modalWifi = document.getElementById("modalWifi");
+        var modalReviews = document.getElementById("modalReviews");
+        var reviewForm = document.getElementById("reviewForm");
+        var closeModal = document.getElementsByClassName("close")[0];
+        var notification = document.getElementById("reviewNotification");
+        var notificationText = document.getElementById("notificationText");
+
+        // Store current cafe being viewed
+        var currentCafe = null;
+
+        // Function to show loading state
+        function showLoading() {
+            cafeList.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Searching for cafes...</p>
+                </div>
+            `;
+        }
+
+        // Function to show error state
+        function showError(message) {
+            cafeList.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Function to format distance
+        function formatDistance(meters) {
+            if (meters < 1000) {
+                return Math.round(meters) + ' m';
+            } else {
+                return (meters / 1000).toFixed(1) + ' km';
+            }
+        }
+
+        // Function to calculate distance between two coordinates
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Earth radius in meters
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Function to generate star rating HTML
+        function generateStars(rating) {
+            let stars = '';
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+
+            if (hasHalfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+
+            return stars;
+        }
+
+        // Function to show notification
+        function showNotification(message) {
+            notificationText.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Function to show cafe details in modal
+        function showCafeDetails(cafeName, cafeData, lat, lon, address) {
+            currentCafe = cafeName;
+            modalCafeName.textContent = cafeName;
+            
+            // Get reviews from localStorage if available
+            const storedReviews = JSON.parse(localStorage.getItem('reviews-' + cafeName)) || [];
+            const allReviews = [...cafeData.reviews, ...storedReviews];
+            
+            // Calculate average rating
+            const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+            const averageRating = totalRating / allReviews.length;
+            
+            modalStars.innerHTML = generateStars(averageRating);
+            modalRating.textContent = averageRating.toFixed(1);
+            modalReviewCount.textContent = '(' + allReviews.length + ' reviews)';
+
+            // Display photos
+            modalPhotos.innerHTML = '';
+            cafeData.photos.forEach(photoUrl => {
+                const img = document.createElement('img');
+                img.src = photoUrl;
+                img.alt = cafeName;
+                img.className = 'cafe-photo';
+                modalPhotos.appendChild(img);
+            });
+
+            // Set cafe details
+            modalDescription.textContent = cafeData.description;
+            modalAddress.textContent = address || 'Address not available';
+            modalHours.textContent = cafeData.hours;
+            modalPhone.textContent = cafeData.phone;
+            modalWifi.textContent = cafeData.wifi;
+
+            // Display reviews
+            displayReviews(allReviews);
+
+            // Show modal
+            modal.style.display = 'block';
+        }
+
+        // Function to display reviews
+        function displayReviews(reviews) {
+            modalReviews.innerHTML = '';
+            
+            if (reviews.length === 0) {
+                modalReviews.innerHTML = '<p>No reviews yet. Be the first to review!</p>';
+                return;
+            }
+            
+            // Sort reviews by date (newest first)
+            reviews.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            reviews.forEach(review => {
+                const reviewElement = document.createElement('div');
+                reviewElement.className = 'review-item';
+                
+                // Check if review content is long enough to truncate
+                const isLongReview = review.content.length > 150;
+                const truncatedContent = isLongReview ? review.content.substring(0, 150) + '...' : review.content;
+                
+                reviewElement.innerHTML = `
+                    <div class="review-header">
+                        <div class="review-author">${review.author}</div>
+                        <div class="review-date">${review.date}</div>
+                    </div>
+                    <div class="stars">${generateStars(review.rating)}</div>
+                    <div class="review-content ${isLongReview ? 'truncated' : ''}">${isLongReview ? truncatedContent : review.content}</div>
+                    ${isLongReview ? '<div class="review-read-more">Read more</div>' : ''}
+                    <div class="review-actions">
+                        <div class="review-action" onclick="event.stopPropagation(); handleReviewHelpful(this)">
+                            <i class="far fa-thumbs-up"></i>
+                            <span>Helpful</span>
+                        </div>
+                        <div class="review-action" onclick="event.stopPropagation(); handleReviewShare(this)">
+                            <i class="far fa-share-square"></i>
+                            <span>Share</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Add click event to expand/collapse review
+                if (isLongReview) {
+                    reviewElement.addEventListener('click', function(e) {
+                        // Don't trigger if clicking on action buttons
+                        if (!e.target.closest('.review-action')) {
+                            this.classList.toggle('expanded');
+                            const content = this.querySelector('.review-content');
+                            const readMore = this.querySelector('.review-read-more');
+                            
+                            if (this.classList.contains('expanded')) {
+                                content.textContent = review.content;
+                                readMore.textContent = 'Read less';
+                            } else {
+                                content.textContent = truncatedContent;
+                                readMore.textContent = 'Read more';
+                            }
+                        }
+                    });
+                }
+                
+                modalReviews.appendChild(reviewElement);
+            });
+        }
+
+        // Function to handle helpful action on reviews
+        function handleReviewHelpful(element) {
+            const helpfulText = element.querySelector('span');
+            const icon = element.querySelector('i');
+            
+            if (element.classList.contains('active')) {
+                element.classList.remove('active');
+                helpfulText.textContent = 'Helpful';
+                icon.className = 'far fa-thumbs-up';
+            } else {
+                element.classList.add('active');
+                helpfulText.textContent = 'Helpful ✓';
+                icon.className = 'fas fa-thumbs-up';
+                showNotification('Thanks for your feedback!');
+            }
+        }
+
+        // Function to handle share action on reviews
+        function handleReviewShare(element) {
+            showNotification('Review sharing functionality would be implemented here!');
+        }
+
+        // Function to handle review form submission
+        function handleReviewSubmit(e) {
+            e.preventDefault();
+            
+            const reviewerName = document.getElementById('reviewerName').value;
+            const rating = document.querySelector('input[name="rating"]:checked').value;
+            const reviewContent = document.getElementById('reviewContent').value;
+            
+            // Create new review object
+            const newReview = {
+                author: reviewerName,
+                date: new Date().toLocaleDateString(),
+                rating: parseInt(rating),
+                content: reviewContent
+            };
+            
+            // Store review in localStorage
+            const storedReviews = JSON.parse(localStorage.getItem('reviews-' + currentCafe)) || [];
+            storedReviews.push(newReview);
+            localStorage.setItem('reviews-' + currentCafe, JSON.stringify(storedReviews));
+            
+            // Get all reviews (including the new one)
+            const cafeData = cafeDatabase[currentCafe] || cafeDatabase["Unnamed Cafe"];
+            const allReviews = [...cafeData.reviews, ...storedReviews];
+            
+            // Update the reviews display
+            displayReviews(allReviews);
+            
+            // Update the rating
+            const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+            const averageRating = totalRating / allReviews.length;
+            modalStars.innerHTML = generateStars(averageRating);
+            modalRating.textContent = averageRating.toFixed(1);
+            modalReviewCount.textContent = '(' + allReviews.length + ' reviews)';
+            
+            // Reset form
+            reviewForm.reset();
+            
+            // Show success notification
+            showNotification('Your review has been posted successfully!');
+        }
+
+        // Function to fetch cafes using Overpass API
+        function fetchCafes(lat, lon) {
+            markersLayer.clearLayers();
+            showLoading();
+
+            // Try multiple amenity types to find more cafes
+            var overpassQuery = `
+                [out:json];
+                (
+                node["amenity"="cafe"](around:5000,${lat},${lon});
+                node["amenity"="coffee_shop"](around:5000,${lat},${lon});
+                node["shop"="coffee"](around:5000,${lat},${lon});
+                );
+                out;
+            `;
+
+            var overpassUrl = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(overpassQuery);
+
+            console.log("Fetching cafes from:", overpassUrl);
+
+            fetch(overpassUrl)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("API response:", data);
+                    cafeList.innerHTML = "";
+
+                    if (data.elements && data.elements.length === 0) {
+                        // If no cafes found, show sample data for demonstration
+                        showSampleCafes(lat, lon);
+                        return;
+                    }
+
+                    // Update results count
+                    resultsCount.textContent = data.elements.length;
+
+                    // Sort cafes by distance
+                    data.elements.sort((a, b) => {
+                        const distA = getDistance(lat, lon, a.lat, a.lon);
+                        const distB = getDistance(lat, lon, b.lat, b.lon);
+                        return distA - distB;
+                    });
+
+                    data.elements.forEach((place, index) => {
+                        var name = place.tags.name || "Unnamed Cafe";
+                        var distance = getDistance(lat, lon, place.lat, place.lon);
+                        var address = place.tags['addr:street'] || '';
+
+                        // Get cafe data from our database or use default
+                        const cafeData = cafeDatabase[name] || cafeDatabase["Unnamed Cafe"];
+                        const rating = cafeData.rating;
+
+                        // Create marker with custom icon
+                        var marker = L.marker([place.lat, place.lon], { 
+                            icon: createCafeIcon(name, index)
+                        }).addTo(markersLayer);
+
+                        // Create popup content
+                        const popupContent = `
+                            <div style="min-width: 200px">
+                                <h3 style="margin: 0 0 8px 0; color: var(--primary-color)">${name}</h3>
+                                <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px;">
+                                    <div style="color: #ffc107;">${generateStars(rating)}</div>
+                                    <span style="color: #666;">${rating.toFixed(1)}</span>
+                                </div>
+                                <p style="margin: 0; color: #666">${formatDistance(distance)} away</p>
+                                ${address ? '<p style="margin: 8px 0 0 0; font-size: 0.9em">' + address + '</p>' : ''}
+                                <button class="view-details-btn" data-name="${name}" data-lat="${place.lat}" data-lon="${place.lon}" data-address="${address}">View Details</button>
+                            </div>
+                        `;
+
+                        // Bind popup to marker
+                        marker.bindPopup(popupContent);
+
+                        // Add click event to the button in the popup
+                        marker.on('popupopen', function() {
+                            const viewDetailsBtn = document.querySelector('.view-details-btn');
+                            if (viewDetailsBtn) {
+                                viewDetailsBtn.onclick = function(e) {
+                                    e.stopPropagation();
+                                    const cafeName = this.getAttribute('data-name');
+                                    const cafeLat = this.getAttribute('data-lat');
+                                    const cafeLon = this.getAttribute('data-lon');
+                                    const cafeAddress = this.getAttribute('data-address');
+                                    const cafeData = cafeDatabase[cafeName] || cafeDatabase["Unnamed Cafe"];
+                                    showCafeDetails(cafeName, cafeData, cafeLat, cafeLon, cafeAddress);
+                                };
+                            }
+                        });
+
+                        // Add to sidebar list
+                        var item = document.createElement("div");
+                        item.className = "cafe-item";
+                        item.innerHTML = `
+                            <div class="cafe-name">${name}</div>
+                            <div class="cafe-details">
+                                <div class="cafe-meta">
+                                    <span><i class="fas fa-walking"></i> ${formatDistance(distance)}</span>
+                                    <span class="cafe-rating-small">
+                                        ${generateStars(rating)}
+                                        <span>${rating.toFixed(1)}</span>
+                                    </span>
+                                </div>
+                                <div class="cafe-action">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        `;
+
+                        item.addEventListener("click", function() {
+                            map.setView([place.lat, place.lon], 17);
+                            marker.openPopup();
+
+                            // Highlight selected cafe
+                            document.querySelectorAll('.cafe-item').forEach(el => {
+                                el.style.background = 'white';
+                            });
+                            this.style.background = '#f8f3f0';
+                        });
+
+                        cafeList.appendChild(item);
+                    });
+                })
+                .catch(err => {
+                    console.error("Error fetching cafes:", err);
+                    // If API fails, show sample data for demonstration
+                    showSampleCafes(lat, lon);
+                });
+        }
+
+        // Function to show sample cafes when API fails or returns no results
+        function showSampleCafes(lat, lon) {
+            console.log("Showing sample cafes");
+            // Sample cafe data for demonstration
+            const sampleCafes = [
+                {
+                    name: "Malabar",
+                    lat: lat + 0.005,
+                    lon: lon + 0.005,
+                    distance: 570,
+                    address: "Electronic City Phase 1"
+                },
+                {
+                    name: "Cafe Coffee Day",
+                    lat: lat + 0.006,
+                    lon: lon + 0.004,
+                    distance: 631,
+                    address: "Electronic City Phase 1"
+                },
+                {
+                    name: "Tea Treat",
+                    lat: lat + 0.007,
+                    lon: lon + 0.003,
+                    distance: 716,
+                    address: "Electronic City Phase 1"
+                },
+                {
+                    name: "Cafe Coffee Day",
+                    lat: lat + 0.008,
+                    lon: lon + 0.002,
+                    distance: 839,
+                    address: "Electronic City Phase 2"
+                },
+                {
+                    name: "Cafe Coffee Day",
+                    lat: lat + 0.01,
+                    lon: lon + 0.001,
+                    distance: 1210,
+                    address: "Electronic City Phase 2"
+                }
+            ];
+
+            resultsCount.textContent = sampleCafes.length;
+
+            sampleCafes.forEach((cafe, index) => {
+                const cafeData = cafeDatabase[cafe.name] || cafeDatabase["Unnamed Cafe"];
+                const rating = cafeData.rating;
+
+                // Create marker with custom icon
+                var marker = L.marker([cafe.lat, cafe.lon], { 
+                    icon: createCafeIcon(cafe.name, index)
+                }).addTo(markersLayer);
+
+                // Create popup content
+                const popupContent = `
+                    <div style="min-width: 200px">
+                        <h3 style="margin: 0 0 8px 0; color: var(--primary-color)">${cafe.name}</h3>
+                        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px;">
+                            <div style="color: #ffc107;">${generateStars(rating)}</div>
+                            <span style="color: #666;">${rating.toFixed(1)}</span>
+                        </div>
+                        <p style="margin: 0; color: #666">${formatDistance(cafe.distance)} away</p>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em">${cafe.address}</p>
+                        <button class="view-details-btn" data-name="${cafe.name}" data-lat="${cafe.lat}" data-lon="${cafe.lon}" data-address="${cafe.address}">View Details</button>
+                    </div>
+                `;
+
+                // Bind popup to marker
+                marker.bindPopup(popupContent);
+
+                // Add click event to the button in the popup
+                marker.on('popupopen', function() {
+                    const viewDetailsBtn = document.querySelector('.view-details-btn');
+                    if (viewDetailsBtn) {
+                        viewDetailsBtn.onclick = function(e) {
+                            e.stopPropagation();
+                            const cafeName = this.getAttribute('data-name');
+                            const cafeLat = this.getAttribute('data-lat');
+                            const cafeLon = this.getAttribute('data-lon');
+                            const cafeAddress = this.getAttribute('data-address');
+                            const cafeData = cafeDatabase[cafeName] || cafeDatabase["Unnamed Cafe"];
+                            showCafeDetails(cafeName, cafeData, cafeLat, cafeLon, cafeAddress);
+                        };
+                    }
+                });
+
+                // Add to sidebar list
+                var item = document.createElement("div");
+                item.className = "cafe-item";
+                item.innerHTML = `
+                    <div class="cafe-name">${cafe.name}</div>
+                    <div class="cafe-details">
+                        <div class="cafe-meta">
+                            <span><i class="fas fa-walking"></i> ${formatDistance(cafe.distance)}</span>
+                            <span class="cafe-rating-small">
+                                ${generateStars(rating)}
+                                <span>${rating.toFixed(1)}</span>
+                            </span>
+                        </div>
+                        <div class="cafe-action">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+
+                item.addEventListener("click", function() {
+                    map.setView([cafe.lat, cafe.lon], 17);
+                    marker.openPopup();
+
+                    // Highlight selected cafe
+                    document.querySelectorAll('.cafe-item').forEach(el => {
+                        el.style.background = 'white';
+                    });
+                    this.style.background = '#f8f3f0';
+                });
+
+                cafeList.appendChild(item);
+            });
+        }
+
+        // Function to search location
+        function searchLocation() {
+            var query = searchInput.value.trim();
+            if (!query) return;
+
+            var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query);
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var lat = parseFloat(data[0].lat);
+                        var lon = parseFloat(data[0].lon);
+                        map.setView([lat, lon], 14);
+                        fetchCafes(lat, lon);
+                    } else {
+                        alert("Location not found! Please try a different search term.");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Error searching for location. Please try again.");
+                });
+        }
+
+        // Event listeners
+        searchInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                searchLocation();
+            }
+        });
+
+        searchButton.addEventListener("click", searchLocation);
+
+        useLocationBtn.addEventListener("click", function () {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+                    map.setView([lat, lon], 14);
+                    fetchCafes(lat, lon);
+
+                    // Reverse geocode to get location name
+                    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lon)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.display_name) {
+                                searchInput.value = data.display_name.split(',')[0];
+                            }
+                        });
+                },
+                function (error) {
+                    alert("Unable to retrieve your location. Please make sure location services are enabled.");
+                    console.error(error);
+                }
+            );
+        });
+
+        searchAreaBtn.addEventListener("click", function () {
+            var center = map.getCenter();
+            fetchCafes(center.lat, center.lng);
+            searchInput.value = "Current Map Area";
+        });
+
+        // Review form submission
+        reviewForm.addEventListener("submit", handleReviewSubmit);
+
+        // Modal close event
+        closeModal.onclick = function () {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Add event listener for map moveend to update cafes when map is moved
+        let updateTimeout;
+        map.on('moveend', function () {
+            // Debounce to avoid too many API calls
+            clearTimeout(updateTimeout);
+            if (searchInput.value === "Current Map Area") {
+                updateTimeout = setTimeout(function () {
+                    var center = map.getCenter();
+                    fetchCafes(center.lat, center.lng);
+                }, 500);
+            }
+        });
+
+        // Add attribution
+        const attribution = L.control({ position: 'bottomright' });
+        attribution.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'attribution');
+            div.innerHTML = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>';
+            return div;
+        };
+        attribution.addTo(map);
+
+        // Initialize with Electronic City, Bangalore
+        function initializeMap() {
+            // Set view to Electronic City, Bangalore
+            map.setView([12.8456, 77.6723], 14);
+            searchInput.value = "Electronic City";
+            fetchCafes(12.8456, 77.6723);
+        }
+
+        // Initialize the map when the page loads
+        window.onload = initializeMap;
+    </script>
+</body>
+</html>
